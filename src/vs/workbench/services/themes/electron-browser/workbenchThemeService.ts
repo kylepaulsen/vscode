@@ -24,6 +24,7 @@ import { IConfigurationEditingService, ConfigurationTarget } from 'vs/workbench/
 import { IConfigurationService } from 'vs/platform/configuration/common/configuration';
 import { IConfigurationRegistry, Extensions as ConfigurationExtensions } from 'vs/platform/configuration/common/configurationRegistry';
 import { IEnvironmentService } from 'vs/platform/environment/common/environment';
+import product from 'vs/platform/node/product';
 import { IMessageService } from 'vs/platform/message/common/message';
 import { IInstantiationService } from 'vs/platform/instantiation/common/instantiation';
 import Severity from 'vs/base/common/severity';
@@ -279,6 +280,7 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 
 		this.migrate().then(_ => {
 			this.initialize().then(null, errors.onUnexpectedError).then(_ => {
+				this.applyUserStyles();
 				this.installConfigurationListener();
 			});
 		});
@@ -417,6 +419,17 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 				});
 			}
 			return null;
+		});
+	}
+
+	private applyUserStyles() {
+		const userStylesPath = Paths.join(this.environmentService.userHome, product.dataFolderName, 'styles.css');
+		pfs.readFile(userStylesPath).then(content => {
+			_applyRules(content.toString(), userStylesClassName);
+		}, e => {
+			if (e.code === 'ENOENT') {
+				pfs.writeFile(userStylesPath, '', 'utf-8');
+			}
 		});
 	}
 
@@ -909,6 +922,7 @@ function escapeCSS(str: string) {
 
 let colorThemeRulesClassName = 'contributedColorTheme';
 let iconThemeRulesClassName = 'contributedIconTheme';
+let userStylesClassName = 'contributedUserStyles';
 
 function _applyRules(styleSheetContent: string, rulesClassName: string) {
 	let themeStyles = document.head.getElementsByClassName(rulesClassName);
